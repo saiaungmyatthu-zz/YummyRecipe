@@ -1,0 +1,30 @@
+<resources>
+    <string name="app_name">YummyRecipe</string>
+
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+
+    <string name="action_settings">Settings</string>
+
+    <string name="recipe_list_error">Currently no recipes available for {category}. \n Please try to create a new recipe.</string>
+    <string name="gallery_sample_label">Coffee \n Day</string>
+    <string name="gallery_sample_name">Chocolate Cake and...</string>
+    <string name="gallery_sample_time">60 Min</string>
+    <string name="gallery_more">MORE</string>
+    <string name="add_new_recipe_text">Enter the below details and create a new recipe.</string>
+    <string name="text_content">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin consectetur diam id aliquam scelerisque. Donec ultrices lacus vel </string>
+    <string name="add_lbl_name">Recipe Name</string>
+    <string name="add_lbl_prepare_time">Preparation Time</string>
+    <string name="add_lbl_cooking_time">Cooking Time</string>
+    <string name="add_lbl_total_time">Total Time: </string>
+    <string name="add_lbl_serving_count">Serving</string>
+    <string name="btn_cancel">Cancel</string>
+    <string name="btn_confirm">Confirm</string>
+    <string name="lbl_hour">Hour</string>
+    <string name="lbl_minute">Minute</string>
+    <string name="lbl_add_new_ingredient">Add Item (Ex: 1 tsp sugar)</string>
+    <string name="lbl_prev">PREVIOUS</string>
+    <string name="lbl_next">NEXT</string>
+    <string name="lbl_subm">SUBMIT</string>
+    <string name="lbl_new_recipe">Create New Recipe</string>
+</resources>
