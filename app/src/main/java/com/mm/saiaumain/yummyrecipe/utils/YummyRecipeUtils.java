@@ -6,13 +6,11 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
-import android.nfc.Tag;
 import android.os.Environment;
-import android.provider.MediaStore;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.widget.CardView;
@@ -37,12 +35,10 @@ import com.mm.saiaumain.yummyrecipe.vo.RecipeItem;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Type;
-import java.text.Format;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
@@ -55,7 +51,6 @@ import java.util.List;
 public class YummyRecipeUtils {
 
     private static final String TAG = "Yummy-YummyRecipeUtils";
-    private static final String[] IMG_SIZES = new String[]{"400x200","150x180"};
 
     public static View generateRecipeItem(Context context, LayoutInflater inflater, ViewGroup container,
                                           int layout, Recipe recipe){
@@ -230,81 +225,26 @@ public class YummyRecipeUtils {
         return (result.contains("Y")? true : false);
     }
 
-    public static String generateImageName(Context context){
+    public static File generateImageName(Context context) throws IOException{
         String timeStamp = new SimpleDateFormat("yyyyMMddHHmmss").format(new Date());
-        timeStamp = context.getString(R.string.app_name) + timeStamp + ".png";
-        Log.e(TAG, "File Name >>>>> " + timeStamp);
-        return timeStamp;
+        File storageDir = new File(Environment.getExternalStoragePublicDirectory(
+                Environment.DIRECTORY_PICTURES), "Yummy");
+        if(!storageDir.exists())
+            storageDir.mkdirs();
+        String fileName = context.getString(R.string.app_name) + "_" + timeStamp;
+        File image = File.createTempFile(fileName, ".jpg", storageDir);
+        return image;
     }
 
-    public static boolean setUpDirectories(String rootFilePath){
-        boolean flag = false;
-        try{
-            for(String subFolderPath : IMG_SIZES){
-                subFolderPath = rootFilePath + File.separator + subFolderPath + File.separator;
-                Log.e(TAG, "SubFolder >>>>> " + subFolderPath);
-                File subFolder = new File(subFolderPath);
-                if(!subFolder.exists()) {
-                    subFolder.mkdirs();
-                    Log.e(TAG, "Create Subfolder " + subFolderPath + " Done !!!!");
-                }else{
-                    Log.e(TAG, "Subfolder " + subFolderPath + " Already exists !!!!");
-                }
-            }
-        }catch(Exception e){
-            e.printStackTrace();
-        }
-        return flag;
-    }
+    public static Bitmap resizeBitmap(Bitmap bitmap, int targetWidth, int targetHeight){
+       int width = bitmap.getWidth(), height = bitmap.getHeight();
+       float scaleWidth = ((float) targetWidth) / width;
+       float scaleHeight = ((float) targetHeight) / height;
 
-    public static Bitmap createImageFile(Context context, String fileName, int photoWidth, int photoHeight, Bitmap bitmap){
-        String rootFilePath = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES).getPath() +
-                File.separator + context.getString(R.string.app_name);
-        Log.e(TAG, "Root File Path >>>> " + rootFilePath);
-        Log.e(TAG, "Photo Width >>>> " + photoWidth);
-        Log.e(TAG, "Photo Height >>>> " + photoHeight);
-        Log.e(TAG, "Bitmap Width >>>> " + bitmap.getWidth());
-        Log.e(TAG, "Bitmap Height >>>> " + bitmap.getHeight());
-        File rootFile = new File(rootFilePath);
+        Matrix matrix = new Matrix();
+        matrix.postScale(scaleWidth, scaleHeight);
 
-        if(!rootFile.exists())
-            rootFile.mkdirs();
-        setUpDirectories(rootFilePath);
-
-        for(String dir : IMG_SIZES){
-            String imageFilePath = rootFilePath + File.separator + dir + File.separator + fileName;
-            File imageFile = new File(imageFilePath);
-
-            try{
-                //imageFile.createNewFile();
-                FileOutputStream fos = new FileOutputStream(imageFile);
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
-                fos.flush();
-                fos.close();
-                bitmap = scaleImageSize(dir, imageFilePath, photoWidth, photoHeight);
-                Log.e(TAG, "Image Path >>>> " + imageFilePath);
-            }catch(Exception e){
-                e.printStackTrace();
-            }
-        }
-
-        return bitmap;
-    }
-
-    public static Bitmap scaleImageSize(String subFolder, String imagePath, int photoW, int photoH){
-        int desireWidth = Integer.parseInt(subFolder.split("x")[0]);
-        int desireHeight = Integer.parseInt(subFolder.split("x")[1]);
-
-        BitmapFactory.Options bmOptions = new BitmapFactory.Options();
-        bmOptions.inJustDecodeBounds = true;
-        BitmapFactory.decodeFile(imagePath, bmOptions);
-
-        int scaleFactor = Math.min(photoW/desireWidth, photoH/desireHeight);
-        bmOptions.inJustDecodeBounds = false;
-        bmOptions.inSampleSize = scaleFactor;
-        bmOptions.inPurgeable = true;
-
-        Bitmap bitmap = BitmapFactory.decodeFile(imagePath, bmOptions);
-        return bitmap;
+        Bitmap resizedBitmap = Bitmap.createScaledBitmap(bitmap, width, height, false);
+        return resizedBitmap;
     }
 }

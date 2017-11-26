@@ -1,33 +1,26 @@
 package com.mm.saiaumain.yummyrecipe;
 
 import android.Manifest;
-import android.app.AlertDialog;
 import android.app.Dialog;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.Drawable;
-import android.media.AudioManager;
-import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.StrictMode;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.support.design.widget.CoordinatorLayout;
-import android.support.design.widget.Snackbar;
 import android.support.design.widget.TextInputEditText;
-import android.support.v4.app.ActivityCompat;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
-import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CheckedTextView;
@@ -45,6 +38,12 @@ import com.mm.saiaumain.yummyrecipe.utils.UIComponentUtils;
 import com.mm.saiaumain.yummyrecipe.utils.YummyRecipeUtils;
 import com.mm.saiaumain.yummyrecipe.vo.Recipe;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -80,6 +79,7 @@ public class NewRecipeActivity extends AppCompatActivity implements ViewPager.On
     private List<String> directionsList = new ArrayList<>();
     private ItemAdapter ingredientAdapter, directionAdapter;
     private int ingredientEditIndex, directionEditIndex;
+    private String imagePath = null;
 
     private final String[] PHOTO_PERMISSION = new String[]{Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE,
             Manifest.permission.WRITE_EXTERNAL_STORAGE};
@@ -127,6 +127,8 @@ public class NewRecipeActivity extends AppCompatActivity implements ViewPager.On
         super.onCreate(savedInstanceState);
         setContentView(R.layout.new_recipe_screen);
         initViews();
+        StrictMode.VmPolicy.Builder builder = new StrictMode.VmPolicy.Builder();
+        StrictMode.setVmPolicy(builder.build());
     }
 
     @Override
@@ -363,8 +365,23 @@ public class NewRecipeActivity extends AppCompatActivity implements ViewPager.On
             @Override
             public void onClick(View view) {
                 dialog.dismiss();
-                Intent cameraIntent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
-                startActivityForResult(cameraIntent, PHOTO_CAMERA);
+                try{
+                    Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                    if (cameraIntent.resolveActivity(getPackageManager()) != null) {
+                        File imageFile = YummyRecipeUtils.generateImageName(NewRecipeActivity.this);
+                        Log.e(TAG, "Image Path >>>>> " + imageFile.getAbsolutePath());
+                        if(null != imageFile){
+                            imagePath = "file:" + imageFile.getAbsolutePath();
+                            Uri imgUri = Uri.fromFile(imageFile);
+                            cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, imgUri);
+                            startActivityForResult(cameraIntent, PHOTO_CAMERA);
+                        }
+                    }
+                }catch(IOException e){
+                    e.printStackTrace();
+                }catch(Exception e){
+                    e.printStackTrace();
+                }
             }
         });
 
@@ -381,19 +398,30 @@ public class NewRecipeActivity extends AppCompatActivity implements ViewPager.On
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        Log.e(TAG, "Activity Result >>>>>> Request Code: " + requestCode + " Result Code: " + resultCode);
-        if(requestCode == PHOTO_CAMERA && resultCode == RESULT_OK && null != data){
-            Bitmap bitmap = (Bitmap) data.getExtras().get("data");
-            String fileName = YummyRecipeUtils.generateImageName(NewRecipeActivity.this);
+        Log.e(TAG, "Activity Result >>>>>> Request Code: " + requestCode + " Result Code: " + resultCode
+            + " Result OK: " + RESULT_OK);
+        if(requestCode == PHOTO_CAMERA && resultCode == RESULT_OK){
+            Log.e(TAG, "Image Path >>>>> " + imagePath);
+            Uri uri = Uri.parse(imagePath);
+            File file = new File(uri.getPath());
+            try{
+                InputStream is = new FileInputStream(file);
+                Bitmap srcBitmap = BitmapFactory.decodeStream(is);
+                int height = srcBitmap.getHeight();
+                Log.e(TAG, "Src Bitmap Height >>>> " + height);
+                height = (new BigDecimal(height / 4)).intValue();
+                Log.e(TAG, "0.35 Src Bitmap Height >>>> " + height);
 
-            LinearLayout.LayoutParams photoParam = (LinearLayout.LayoutParams) photo.getLayoutParams();
-            Bitmap scaledBitmap = YummyRecipeUtils.createImageFile(NewRecipeActivity.this, fileName,
-                    400, 200, bitmap);
+                LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) photo.getLayoutParams();
+                params.height = height;
+                Bitmap sizedMap = YummyRecipeUtils.resizeBitmap(srcBitmap, params.width, params.height);
 
-            if(null != scaledBitmap)
-                photo.setImageBitmap(scaledBitmap);
-            else
-                photo.setImageBitmap(bitmap);
+                photo.setImageBitmap(sizedMap);
+                photo.setLayoutParams(params);
+            }catch(FileNotFoundException e){
+                e.printStackTrace();
+                return;
+            }
         }else if(requestCode == PHOTO_GALLERY && resultCode == RESULT_OK && null != data){
             try{
                 Uri uri = data.getData();
@@ -402,7 +430,19 @@ public class NewRecipeActivity extends AppCompatActivity implements ViewPager.On
                 cursor.moveToFirst();
                 int fileIndex = cursor.getColumnIndex(file[0]);
                 String imageDecode = cursor.getString(fileIndex);
-                photo.setImageBitmap(BitmapFactory.decodeFile(imageDecode));
+
+                Bitmap srcBitmap = BitmapFactory.decodeFile(imageDecode);
+                int height = srcBitmap.getHeight();
+                Log.e(TAG, "Src Bitmap Height >>>> " + height);
+                height = (new BigDecimal(height / 4)).intValue();
+                Log.e(TAG, "0.35 Src Bitmap Height >>>> " + height);
+
+                LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) photo.getLayoutParams();
+                params.height = height;
+                Bitmap sizedMap = YummyRecipeUtils.resizeBitmap(srcBitmap, params.width, params.height);
+
+                photo.setImageBitmap(sizedMap);
+                photo.setLayoutParams(params);
             }catch(Exception e){
                 Toast.makeText(getApplicationContext(), "Please Try Again.", Toast.LENGTH_SHORT).show();
             }
