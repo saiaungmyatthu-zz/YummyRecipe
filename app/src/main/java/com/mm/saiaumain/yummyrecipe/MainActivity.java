@@ -82,10 +82,6 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void doNewRecipe(){
-        /*fragment = new NewRecipeScreen();
-        FragmentTransaction transaction = getFragmentManager().beginTransaction();
-        transaction.replace(R.id.frame, fragment);
-        transaction.commit();*/
         Intent newRecipeIntent = new Intent(this, NewRecipeActivity.class);
         this.startActivity(newRecipeIntent);
     }

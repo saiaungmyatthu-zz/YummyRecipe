@@ -1,13 +1,20 @@
 package com.mm.saiaumain.yummyrecipe.utils;
 
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.Dialog;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.media.AudioManager;
+import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.support.constraint.ConstraintLayout;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.widget.CardView;
 import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.LinearLayoutManager;
@@ -18,6 +25,8 @@ import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
@@ -26,6 +35,7 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import com.google.gson.Gson;
+import com.mm.saiaumain.yummyrecipe.NewRecipeActivity;
 import com.mm.saiaumain.yummyrecipe.R;
 import com.mm.saiaumain.yummyrecipe.RecipeListScreen;
 import com.mm.saiaumain.yummyrecipe.adapters.GalleryAdapter;
@@ -192,4 +202,61 @@ public class UIComponentUtils {
         transaction.commit();
     }
 
+    public static Dialog getCustomDialog(Context context, int layoutId, String title, boolean isCancallable){
+        Dialog dialog = new Dialog(context);
+        if(YummyRecipeUtils.isEmptyOrNull(title)) {
+            dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        }else{
+            dialog.setTitle(title);
+        }
+        WindowManager.LayoutParams params = dialog.getWindow().getAttributes();
+        params.gravity = Gravity.CENTER;
+        dialog.getWindow().setAttributes(params);
+        dialog.setCanceledOnTouchOutside(isCancallable);
+        dialog.setContentView(layoutId);
+        return dialog;
+    }
+
+    public static void showPermissionPopup(final Context context, String title, String message,
+                                                 Drawable icon, final int resquestCode, final String... permissions){
+        final AlertDialog dialog = getAlertPopup(context, title, message, icon);
+        if(null != dialog){
+            dialog.setButton(AlertDialog.BUTTON_POSITIVE, "Grant", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialogInterface, int i) {
+                    dialog.cancel();
+                    ActivityCompat.requestPermissions((Activity)context, permissions, resquestCode);
+                }
+            });
+            dialog.setButton(AlertDialog.BUTTON_NEGATIVE, "Cancel", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialogInterface, int i) {
+                    dialog.cancel();
+                }
+            });
+            dialog.show();
+        }
+    }
+
+    public static AlertDialog getAlertPopup(Context context, String title, String message, Drawable icon){
+        final AlertDialog dialog = new AlertDialog.Builder(context).create();
+        if(!YummyRecipeUtils.isEmptyOrNull(title))
+            dialog.setTitle(title);
+        if(!YummyRecipeUtils.isEmptyOrNull(message))
+            dialog.setMessage(message);
+        if(null != icon)
+            dialog.setIcon(icon);
+
+        return dialog;
+    }
+
+    public static void playSound(Context context, int soundId){
+        MediaPlayer player = MediaPlayer.create(context, soundId);
+        player.setAudioStreamType(AudioManager.STREAM_MUSIC);
+        player.start();
+    }
+
+    public static void renderRecentShootPhoto(){
+
+    }
 }

@@ -22,18 +22,16 @@ import java.util.ArrayList;
 public class RecipePagerAdapter extends PagerAdapter {
 
     private Context context;
-    private String[] labels;
     private int[] layouts;
 
-    public RecipePagerAdapter(Context context, String[] labels, int[] layouts){
+    public RecipePagerAdapter(Context context, int[] layouts){
         this.context = context;
-        this.labels = labels;
         this.layouts = layouts;
     }
 
     @Override
     public int getCount() {
-        return this.labels.length;
+        return this.layouts.length;
     }
 
     @Override

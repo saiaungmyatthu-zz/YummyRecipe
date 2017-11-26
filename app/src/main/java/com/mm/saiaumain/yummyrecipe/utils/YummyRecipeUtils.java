@@ -1,12 +1,20 @@
 package com.mm.saiaumain.yummyrecipe.utils;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.nfc.Tag;
+import android.os.Environment;
+import android.provider.MediaStore;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.widget.CardView;
 import android.util.Log;
 import android.util.TypedValue;
@@ -28,11 +36,16 @@ import com.mm.saiaumain.yummyrecipe.vo.Recipe;
 import com.mm.saiaumain.yummyrecipe.vo.RecipeItem;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.lang.reflect.Type;
+import java.text.Format;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -42,6 +55,7 @@ import java.util.List;
 public class YummyRecipeUtils {
 
     private static final String TAG = "Yummy-YummyRecipeUtils";
+    private static final String[] IMG_SIZES = new String[]{"400x200","150x180"};
 
     public static View generateRecipeItem(Context context, LayoutInflater inflater, ViewGroup container,
                                           int layout, Recipe recipe){
@@ -183,5 +197,114 @@ public class YummyRecipeUtils {
 
     public static boolean isEmptyOrNull(String val){
         return (null == val || val.isEmpty())? true : false;
+    }
+
+    public static boolean hasPermissionSelfCheck(Context context, String... permissionCode){
+        if(permissionCode.length > 1){
+            String result = "";
+            for(String code : permissionCode){
+                int permission = ContextCompat.checkSelfPermission(context, code);
+                result = result.concat((permission == PackageManager.PERMISSION_GRANTED)? "Y" : "N");
+            }
+            Log.e(TAG, "Multiple Permissions Result >>>>> " + result);
+            return result.contains("N")? false : true;
+        }else{
+            int permission = ContextCompat.checkSelfPermission(context, permissionCode[0]);
+            boolean result = (permission == PackageManager.PERMISSION_GRANTED)? true : false;
+            Log.e(TAG, "Single Permissions Result >>>>> " + result);
+            return result;
+        }
+    }
+
+    public static boolean requiredPermissionExplanation(Activity context, String... permissionCodes){
+        String result = "";
+        for(String permissionCode : permissionCodes){
+            Log.e(TAG, "Permission Code >>>> " + permissionCode);
+            if(ActivityCompat.shouldShowRequestPermissionRationale(context, permissionCode)){
+                result = result.concat("Y");
+            }else{
+                result = result.concat("N");
+            }
+        }
+        Log.e(TAG, "Permission Explanation Required????? " + result);
+        return (result.contains("Y")? true : false);
+    }
+
+    public static String generateImageName(Context context){
+        String timeStamp = new SimpleDateFormat("yyyyMMddHHmmss").format(new Date());
+        timeStamp = context.getString(R.string.app_name) + timeStamp + ".png";
+        Log.e(TAG, "File Name >>>>> " + timeStamp);
+        return timeStamp;
+    }
+
+    public static boolean setUpDirectories(String rootFilePath){
+        boolean flag = false;
+        try{
+            for(String subFolderPath : IMG_SIZES){
+                subFolderPath = rootFilePath + File.separator + subFolderPath + File.separator;
+                Log.e(TAG, "SubFolder >>>>> " + subFolderPath);
+                File subFolder = new File(subFolderPath);
+                if(!subFolder.exists()) {
+                    subFolder.mkdirs();
+                    Log.e(TAG, "Create Subfolder " + subFolderPath + " Done !!!!");
+                }else{
+                    Log.e(TAG, "Subfolder " + subFolderPath + " Already exists !!!!");
+                }
+            }
+        }catch(Exception e){
+            e.printStackTrace();
+        }
+        return flag;
+    }
+
+    public static Bitmap createImageFile(Context context, String fileName, int photoWidth, int photoHeight, Bitmap bitmap){
+        String rootFilePath = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES).getPath() +
+                File.separator + context.getString(R.string.app_name);
+        Log.e(TAG, "Root File Path >>>> " + rootFilePath);
+        Log.e(TAG, "Photo Width >>>> " + photoWidth);
+        Log.e(TAG, "Photo Height >>>> " + photoHeight);
+        Log.e(TAG, "Bitmap Width >>>> " + bitmap.getWidth());
+        Log.e(TAG, "Bitmap Height >>>> " + bitmap.getHeight());
+        File rootFile = new File(rootFilePath);
+
+        if(!rootFile.exists())
+            rootFile.mkdirs();
+        setUpDirectories(rootFilePath);
+
+        for(String dir : IMG_SIZES){
+            String imageFilePath = rootFilePath + File.separator + dir + File.separator + fileName;
+            File imageFile = new File(imageFilePath);
+
+            try{
+                //imageFile.createNewFile();
+                FileOutputStream fos = new FileOutputStream(imageFile);
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
+                fos.flush();
+                fos.close();
+                bitmap = scaleImageSize(dir, imageFilePath, photoWidth, photoHeight);
+                Log.e(TAG, "Image Path >>>> " + imageFilePath);
+            }catch(Exception e){
+                e.printStackTrace();
+            }
+        }
+
+        return bitmap;
+    }
+
+    public static Bitmap scaleImageSize(String subFolder, String imagePath, int photoW, int photoH){
+        int desireWidth = Integer.parseInt(subFolder.split("x")[0]);
+        int desireHeight = Integer.parseInt(subFolder.split("x")[1]);
+
+        BitmapFactory.Options bmOptions = new BitmapFactory.Options();
+        bmOptions.inJustDecodeBounds = true;
+        BitmapFactory.decodeFile(imagePath, bmOptions);
+
+        int scaleFactor = Math.min(photoW/desireWidth, photoH/desireHeight);
+        bmOptions.inJustDecodeBounds = false;
+        bmOptions.inSampleSize = scaleFactor;
+        bmOptions.inPurgeable = true;
+
+        Bitmap bitmap = BitmapFactory.decodeFile(imagePath, bmOptions);
+        return bitmap;
     }
 }

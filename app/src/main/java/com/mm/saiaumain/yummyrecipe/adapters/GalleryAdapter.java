@@ -50,8 +50,6 @@ public class GalleryAdapter extends RecyclerView.Adapter<GalleryAdapter.RecipeHo
         final Recipe recipe = recipeList.get(position);
         Log.e(TAG, "**** Image Url >>>>> " + recipe.getImageInfo().getUrl());
         Drawable background = YummyRecipeUtils.getDrawableFromAsset(context, "img_150x180/" + recipe.getImageInfo().getUrl());
-        //Bitmap bitmap = ((BitmapDrawable)background).getBitmap();
-        //holder.image.setImageBitmap(bitmap);
         holder.image.setImageDrawable(background);
 
         String recipeName = recipe.getName().replace("\n", "");

@@ -4,10 +4,21 @@
     android:orientation="vertical" android:layout_width="match_parent"
     android:padding="10dp" android:layout_height="match_parent"
     android:fitsSystemWindows="true">
-
     <ImageView
-        android:id="@+id/imageView2"
+        android:id="@+id/photo"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:srcCompat="@drawable/ic_my_reciept" />
+        android:contentDescription="@null"
+        app:srcCompat="@drawable/ic_photo_gallery" />
+
+    <TextView
+        android:id="@+id/textView2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textAppearance="@style/Base.TextAppearance.AppCompat.Large"
+        android:padding="5dp"
+        android:textColor="@android:color/darker_gray"
+        android:textStyle="bold"
+        android:textAlignment="center"
+        android:text="@string/add_photo" />
 </LinearLayout>

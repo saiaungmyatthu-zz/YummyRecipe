@@ -1,13 +1,26 @@
 package com.mm.saiaumain.yummyrecipe;
 
+import android.Manifest;
+import android.app.AlertDialog;
 import android.app.Dialog;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.drawable.Drawable;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.MediaStore;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.design.widget.CoordinatorLayout;
+import android.support.design.widget.Snackbar;
 import android.support.design.widget.TextInputEditText;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.DefaultItemAnimator;
@@ -58,7 +71,6 @@ public class NewRecipeActivity extends AppCompatActivity implements ViewPager.On
     private ImageButton addItem, editItem;
     private EditText dynamicText;
 
-    private static final String TAG = "Yummy-NewRecipe";
     private int[] labels = new int[]{R.string.title_step_1,R.string.title_step_2,R.string.title_step_3,
             R.string.title_step_4,R.string.title_step_5,R.string.title_step_6};
     private int[] layouts = new int[]{R.layout.input_1, R.layout.input_2, R.layout.input_3,
@@ -69,6 +81,11 @@ public class NewRecipeActivity extends AppCompatActivity implements ViewPager.On
     private ItemAdapter ingredientAdapter, directionAdapter;
     private int ingredientEditIndex, directionEditIndex;
 
+    private final String[] PHOTO_PERMISSION = new String[]{Manifest.permission.CAMERA, Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE};
+    private static final String TAG = "Yummy-NewRecipe";
+    private static final int PHOTO_PERMISSION_CODE = 1000, PHOTO_CAMERA = 1001, PHOTO_GALLERY = 1002;
+
     private void initViews(){
         back = (ImageButton) findViewById(R.id.btnBack);
         prev = (Button) findViewById(R.id.btnPrev);
@@ -76,8 +93,8 @@ public class NewRecipeActivity extends AppCompatActivity implements ViewPager.On
         label = (TextView) findViewById(R.id.label);
         label.setText(getString(labels[0]));
         indicatorLayout = (LinearLayout) findViewById(R.id.indicator);
-        pager = (ViewPager) findViewById(R.id.pager);
 
+        pager = (ViewPager) findViewById(R.id.pager);
         adapter = new RecipePagerAdapter(this, layouts);
         pager.setAdapter(adapter);
         pager.setCurrentItem(0);
@@ -154,6 +171,31 @@ public class NewRecipeActivity extends AppCompatActivity implements ViewPager.On
     }
 
     @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        switch (requestCode){
+            case PHOTO_PERMISSION_CODE:
+                boolean isAllGranted = false;
+                String permissionName = null;
+                for(int i = 0; i < grantResults.length; i++){
+                    if(grantResults[i] == PackageManager.PERMISSION_GRANTED) {
+                        isAllGranted = true;
+                    }else{
+                        isAllGranted = false;
+                        break;
+                    }
+                }
+                Log.e(TAG, "isAllGranted Inside onRequestPermissionsResult >>>> " + isAllGranted);
+                if(isAllGranted){
+                    doPhotoAction();
+                }else{
+                    Toast.makeText(getBaseContext(),"Unable to get Permission for " + permissionName, Toast.LENGTH_LONG).show();
+                }
+                break;
+        }
+    }
+
+    @Override
     public void onPageScrollStateChanged(int state) {}
 
     @Override
@@ -189,22 +231,16 @@ public class NewRecipeActivity extends AppCompatActivity implements ViewPager.On
         photo.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Dialog dialog = UIComponentUtils.getCustomDialog(NewRecipeActivity.this, R.layout.photo_chooser, getString(R.string.choose_take_photo), true);
-                dialog.show();
-                CheckedTextView camera = (CheckedTextView) dialog.findViewById(R.id.camera);
-                camera.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-                        Toast.makeText(getApplicationContext(), "Camera Selected", Toast.LENGTH_SHORT).show();
+                if(!YummyRecipeUtils.hasPermissionSelfCheck(NewRecipeActivity.this, PHOTO_PERMISSION)){
+                    Log.e(TAG, "App neet to grant Camera & Gallery permissions.");
+                    if(YummyRecipeUtils.requiredPermissionExplanation(NewRecipeActivity.this, PHOTO_PERMISSION)){
+                        UIComponentUtils.showPermissionPopup(NewRecipeActivity.this, getString(R.string.photo_permission_title),
+                                getString(R.string.photo_permission_message), getDrawable(R.mipmap.ic_permission), PHOTO_PERMISSION_CODE, PHOTO_PERMISSION);
                     }
-                });
-                CheckedTextView gallery = (CheckedTextView) dialog.findViewById(R.id.gallery);
-                gallery.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-                        Toast.makeText(getApplicationContext(), "Gallery Selected", Toast.LENGTH_SHORT).show();
-                    }
-                });
+                }else{
+                    Log.e(TAG, "App already have permission for Camera & Gallery.");
+                    doPhotoAction();
+                }
             }
         });
     }
@@ -316,6 +352,61 @@ public class NewRecipeActivity extends AppCompatActivity implements ViewPager.On
                 dynamicText.setText("");
             }
         });
+    }
+
+    private void doPhotoAction(){
+        final Dialog dialog = UIComponentUtils.getCustomDialog(NewRecipeActivity.this, R.layout.photo_chooser, getString(R.string.choose_take_photo), true);
+        dialog.show();
+
+        CheckedTextView camera = (CheckedTextView) dialog.findViewById(R.id.camera);
+        camera.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                dialog.dismiss();
+                Intent cameraIntent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
+                startActivityForResult(cameraIntent, PHOTO_CAMERA);
+            }
+        });
+
+        CheckedTextView gallery = (CheckedTextView) dialog.findViewById(R.id.gallery);
+        gallery.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                dialog.dismiss();
+                Intent galleryIntent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+                startActivityForResult(galleryIntent, PHOTO_GALLERY);
+            }
+        });
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        Log.e(TAG, "Activity Result >>>>>> Request Code: " + requestCode + " Result Code: " + resultCode);
+        if(requestCode == PHOTO_CAMERA && resultCode == RESULT_OK && null != data){
+            Bitmap bitmap = (Bitmap) data.getExtras().get("data");
+            String fileName = YummyRecipeUtils.generateImageName(NewRecipeActivity.this);
+
+            LinearLayout.LayoutParams photoParam = (LinearLayout.LayoutParams) photo.getLayoutParams();
+            Bitmap scaledBitmap = YummyRecipeUtils.createImageFile(NewRecipeActivity.this, fileName,
+                    400, 200, bitmap);
+
+            if(null != scaledBitmap)
+                photo.setImageBitmap(scaledBitmap);
+            else
+                photo.setImageBitmap(bitmap);
+        }else if(requestCode == PHOTO_GALLERY && resultCode == RESULT_OK && null != data){
+            try{
+                Uri uri = data.getData();
+                String[] file = {MediaStore.Images.Media.DATA};
+                Cursor cursor = getContentResolver().query(uri, file, null, null, null);
+                cursor.moveToFirst();
+                int fileIndex = cursor.getColumnIndex(file[0]);
+                String imageDecode = cursor.getString(fileIndex);
+                photo.setImageBitmap(BitmapFactory.decodeFile(imageDecode));
+            }catch(Exception e){
+                Toast.makeText(getApplicationContext(), "Please Try Again.", Toast.LENGTH_SHORT).show();
+            }
+        }
     }
 
     private void displayTimerPopup(String title, final TextInputEditText editText){
